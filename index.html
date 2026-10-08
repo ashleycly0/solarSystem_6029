@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar System Explorer / 太陽系小探險家</title>
+    <!-- Tailwind CSS for modern responsive layout -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome icons for UI controls -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts for cute, readable typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
+            background-color: #0d0e26;
+            color: #ffffff;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 4px;
+        }
+
+        /* Space Grid Background */
+        .space-bg {
+            background: radial-gradient(circle at center, #1a1c4b 0%, #0a0b18 100%);
+        }
+
+        /* Pulsing Glow Animation */
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 15px rgba(255, 200, 50, 0.8)); }
+            50% { transform: scale(1.03); filter: drop-shadow(0 0 30px rgba(255, 150, 0, 1)); }
+        }
+
+        .sun-glow {
+            animation: pulse-glow 4s infinite ease-in-out;
+        }
+
+        /* Saturn Rings Canvas Overlay container */
+        .saturn-ring-shadow {
+            box-shadow: 0 0 20px rgba(245, 212, 126, 0.4);
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: rgba(23, 25, 60, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* Fun Bounce Hover */
+        .bounce-hover:hover {
+            transform: scale(1.08);
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+    </style>
+</head>
+<body class="space-bg min-h-screen flex flex-col justify-between select-none">
+
+    <!-- Top Navigation Header -->
+    <header class="glass-panel sticky top-0 z-30 px-4 py-3 shadow-lg flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-tr from-amber-400 to-red-500 p-2.5 rounded-2xl shadow-md text-2xl">
+                🚀
+            </div>
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-pink-400 to-cyan-300">
+                    Solar System Explorer
+                </h1>
+                <p class="text-xs sm:text-sm font-semibold text-yellow-300/90">
+                    太陽系小探險家
+                </p>
+            </div>
+        </div>
+
+        <!-- Controls: Speed, Zoom, View Modes -->
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+            <!-- Animation Play/Pause -->
+            <button id="playPauseBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1.5 transition shadow">
+                <i class="fas fa-pause"></i> <span id="playPauseTxt">Pause / 暫停</span>
+            </button>
+
+            <!-- Orbit Speed Slider -->
+            <div class="flex items-center gap-1.5 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-xs">
+                <i class="fas fa-tachometer-alt text-cyan-400"></i>
+                <span class="hidden sm:inline text-slate-300">Speed / 速度:</span>
+                <input type="range" id="speedSlider" min="0.1" max="3" step="0.1" value="1" class="w-16 sm:w-20 accent-cyan-400 cursor-pointer">
+            </div>
+
+            <!-- Zoom Controls -->
+            <div class="flex items-center bg-slate-800/80 rounded-xl border border-slate-700 p-1">
+                <button id="zoomOutBtn" class="px-2.5 py-1 hover:bg-slate-700 rounded-lg text-cyan-300 font-bold transition text-sm" title="Zoom Out / 縮小">
+                    <i class="fas fa-search-minus"></i>
+                </button>
+                <span id="zoomLevelText" class="px-2 text-xs font-semibold text-cyan-200 min-w-[45px] text-center">100%</span>
+                <button id="zoomInBtn" class="px-2.5 py-1 hover:bg-slate-700 rounded-lg text-cyan-300 font-bold transition text-sm" title="Zoom In / 放大">
+                    <i class="fas fa-search-plus"></i>
+                </button>
+                <button id="resetViewBtn" class="px-2 py-1 hover:bg-slate-700 rounded-lg text-xs text-yellow-400 ml-1 transition" title="Reset View / 重置">
+                    <i class="fas fa-redo-alt"></i>
+                </button>
+            </div>
+
+            <!-- Quiz Toggle Button -->
+            <button id="quizTabBtn" class="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white px-3.5 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1.5 shadow-md transition transform active:scale-95">
+                <i class="fas fa-gamepad text-yellow-300"></i>
+                <span>Quiz Game / 探索小問答</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Interactive Canvas & Orbit Container -->
+    <main id="viewportContainer" class="relative flex-1 w-full overflow-hidden cursor-grab active:cursor-grabbing flex items-center justify-center min-h-[500px]">
+        
+        <!-- Background Stars Overlay Canvas -->
+        <canvas id="starsCanvas" class="absolute inset-0 pointer-events-none"></canvas>
+
+        <!-- Dynamic Solar System Interactive Container -->
+        <div id="solarSystemWorld" class="absolute transition-transform duration-100 ease-out flex items-center justify-center origin-center">
+            
+            <!-- Orbits and Planets will be injected via JS -->
+            <!-- Dynamic Orbit Canvas Layer for standard paths -->
+            <canvas id="orbitCanvas" class="absolute pointer-events-none z-0"></canvas>
+
+            <!-- The Sun at the Center -->
+            <div id="sunElement" class="absolute z-10 flex flex-col items-center justify-center cursor-pointer group">
+                <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-r from-amber-300 via-orange-400 to-red-500 sun-glow flex items-center justify-center shadow-2xl transition group-hover:scale-110">
+                    <span class="text-3xl sm:text-4xl animate-bounce">☀️</span>
+                </div>
+                <div class="mt-2 bg-yellow-900/80 border border-yellow-400/50 text-yellow-200 text-xs font-bold px-2.5 py-0.5 rounded-full shadow backdrop-blur">
+                    Sun / 太陽
+                </div>
+            </div>
+
+            <!-- Planets DOM Container -->
+            <div id="planetsContainer" class="absolute inset-0 z-20 pointer-events-none"></div>
+        </div>
+
+        <!-- Touch / Drag Hint Indicator -->
+        <div class="absolute bottom-4 left-4 pointer-events-none bg-slate-900/80 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-full text-xs flex items-center gap-2 backdrop-blur shadow-lg">
+            <span>👆 Drag to Pan | Scroll / Buttons to Zoom</span>
+            <span class="text-slate-500">|</span>
+            <span>拖拽移動 | 滾輪/按鈕放大縮小</span>
+        </div>
+
+        <!-- Quick Planet Bar (Bottom Horizontal Scroll) -->
+        <div class="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 p-1.5 rounded-2xl backdrop-blur max-w-[90vw] overflow-x-auto shadow-xl">
+            <span class="text-xs text-yellow-400 font-bold px-2 whitespace-nowrap">Jump to / 快速跳轉:</span>
+            <div id="planetQuickNav" class="flex gap-1"></div>
+        </div>
+    </main>
+
+    <!-- Planet Detail Modal -->
+    <div id="planetModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md hidden opacity-0 transition-opacity duration-300">
+        <div class="glass-panel max-w-2xl w-full rounded-3xl p-6 sm:p-8 relative border-2 border-indigo-400/40 shadow-2xl transform scale-95 transition-transform duration-300 max-h-[90vh] overflow-y-auto" id="modalCard">
+            
+            <!-- Close Button -->
+            <button id="closeModalBtn" class="absolute top-4 right-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold border border-slate-600 transition">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <!-- Modal Header -->
+            <div class="flex flex-col sm:flex-row items-center gap-6 border-b border-slate-700/80 pb-6">
+                <div id="modalPlanetIcon" class="w-28 h-28 sm:w-36 sm:h-36 rounded-full flex items-center justify-center text-6xl sm:text-7xl shadow-2xl relative border-4 border-white/20 shrink-0 bounce-hover">
+                    <!-- Icon loaded via JS -->
+                </div>
+                <div class="text-center sm:text-left flex-1">
+                    <div class="inline-block px-3 py-1 bg-indigo-900/80 border border-indigo-400/40 text-cyan-300 text-xs sm:text-sm font-bold rounded-full mb-2" id="modalOrderBadge">
+                        Order Badge
+                    </div>
+                    <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-wide" id="modalEnglishName">
+                        Planet Name
+                    </h2>
+                    <p class="text-xl sm:text-2xl font-bold text-yellow-300 mt-0.5" id="modalChineseName">
+                        行星名稱
+                    </p>
+                    <p class="text-xs sm:text-sm text-indigo-200 mt-2 italic" id="modalTypeBadge">
+                        Type / 類型
+                    </p>
+                </div>
+            </div>
+
+            <!-- Core Characteristics / Features -->
+            <div class="mt-6 space-y-4">
+                <h3 class="text-lg font-bold text-yellow-400 flex items-center gap-2">
+                    <i class="fas fa-star text-amber-300"></i> Key Characteristics / 主要特徵
+                </h3>
+                
+                <!-- Dual Language Description Card -->
+                <div class="bg-slate-800/90 rounded-2xl p-4 border border-slate-700/80 space-y-3">
+                    <div class="flex items-start gap-2.5">
+                        <span class="bg-blue-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded uppercase mt-1">EN</span>
+                        <p class="text-sm sm:text-base text-slate-100 font-medium leading-relaxed" id="modalDescEn">
+                            English characteristic description...
+                        </p>
+                    </div>
+                    <div class="border-t border-slate-700/60 pt-2.5 flex items-start gap-2.5">
+                        <span class="bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded uppercase mt-1">繁體</span>
+                        <p class="text-sm sm:text-base text-amber-100 font-bold leading-relaxed" id="modalDescZh">
+                            中文特徵說明...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Fun Fact Pill -->
+                <div class="bg-gradient-to-r from-amber-500/20 via-purple-500/20 to-indigo-500/20 border border-amber-400/30 rounded-2xl p-4">
+                    <h4 class="text-xs font-bold text-amber-300 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <i class="fas fa-lightbulb text-yellow-400"></i> Fun Kid Fact / 趣味小知識:
+                    </h4>
+                    <p class="text-sm text-slate-200 font-medium" id="modalFunFactEn"></p>
+                    <p class="text-sm text-amber-200 font-bold mt-1" id="modalFunFactZh"></p>
+                </div>
+
+                <!-- Quick Fact Metrics Grid -->
+                <div class="grid grid-cols-3 gap-3 pt-2">
+                    <div class="bg-slate-900/80 border border-slate-700/70 p-3 rounded-xl text-center">
+                        <span class="text-xs text-slate-400 block font-semibold">Moons / 衛星</span>
+                        <span class="text-sm sm:text-lg font-bold text-cyan-300" id="modalMoons">0</span>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-700/70 p-3 rounded-xl text-center">
+                        <span class="text-xs text-slate-400 block font-semibold">Temp / 溫度</span>
+                        <span class="text-sm sm:text-lg font-bold text-rose-300" id="modalTemp">0°C</span>
+                    </div>
+                    <div class="bg-slate-900/80 border border-slate-700/70 p-3 rounded-xl text-center">
+                        <span class="text-xs text-slate-400 block font-semibold">Size vs Earth</span>
+                        <span class="text-sm sm:text-lg font-bold text-emerald-300" id="modalSize">1x</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Action Buttons -->
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="listenFactBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition">
+                    <i class="fas fa-volume-up"></i>
+                    <span>Sound Effect / 音效</span>
+                </button>
+                <button id="modalGotItBtn" class="bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-slate-900 px-6 py-2 rounded-xl text-sm font-black transition">
+                    Awesome! / 明白了！
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Quiz Challenge Modal -->
+    <div id="quizModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md hidden">
+        <div class="glass-panel max-w-xl w-full rounded-3xl p-6 sm:p-8 relative border-2 border-pink-500/40 shadow-2xl">
+            <!-- Close Quiz -->
+            <button id="closeQuizBtn" class="absolute top-4 right-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white w-9 h-9 rounded-full flex items-center justify-center text-base font-bold transition">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <!-- Quiz Header -->
+            <div class="text-center mb-6">
+                <span class="bg-pink-500/20 text-pink-300 text-xs font-black px-3 py-1 rounded-full border border-pink-500/30">
+                    🎯 Planet Quiz Challenge / 太陽系小問答
+                </span>
+                <h3 class="text-2xl font-bold text-white mt-2">Can you guess the planet?</h3>
+                <p class="text-sm font-bold text-yellow-300">你能猜出這是哪顆行星嗎？</p>
+            </div>
+
+            <!-- Quiz Score & Progress -->
+            <div class="flex justify-between items-center mb-4 bg-slate-800/80 px-4 py-2 rounded-xl border border-slate-700">
+                <span class="text-xs font-bold text-slate-300">Score / 得分: <span id="quizScore" class="text-yellow-400 text-lg">0</span></span>
+                <span class="text-xs font-bold text-slate-300">Question / 題目: <span id="quizProgress" class="text-cyan-400">1/5</span></span>
+            </div>
+
+            <!-- Question Card -->
+            <div class="bg-slate-800/90 rounded-2xl p-5 border border-slate-700 mb-6 text-center space-y-2">
+                <p id="quizQuestionEn" class="text-base sm:text-lg text-white font-bold">Question in English loading...</p>
+                <p id="quizQuestionZh" class="text-sm sm:text-base text-yellow-300 font-bold">中文題目載入中...</p>
+            </div>
+
+            <!-- Options Grid -->
+            <div id="quizOptionsGrid" class="grid grid-cols-2 gap-3 mb-4">
+                <!-- Options injected by JS -->
+            </div>
+
+            <!-- Quiz Feedback Alert Box -->
+            <div id="quizFeedback" class="hidden text-center p-3 rounded-xl font-bold text-sm mb-2"></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="glass-panel text-center py-2 px-4 text-xs text-slate-400 z-30">
+        Solar System Bilingual Learning Interactive • Primary School Astronomy Edition 🌍✨
+    </footer>
+
+    <script>
+        /* ----------------------------------------------------
+         * Planet Data Specification (Primary Student Friendly)
+         * ---------------------------------------------------- */
+        const PLANETS_DATA = [
+            {
+                id: 'mercury',
+                nameEn: 'Mercury',
+                nameZh: '水星',
+                orderEn: '1st Planet from Sun',
+                orderZh: '距離太陽第 1 顆行星',
+                typeEn: 'Terrestrial (Rocky)',
+                typeZh: '岩石行星',
+                color: '#A5A5A5',
+                gradient: 'from-gray-300 via-slate-400 to-gray-600',
+                glowColor: 'rgba(165, 165, 165, 0.6)',
+                sizePx: 18,
+                orbitRadius: 110,
+                baseSpeed: 0.03,
+                emoji: '🔘',
+                moons: 0,
+                temp: '167°C',
+                sizeRatio: '0.38x',
+                descEn: 'Mercury is the smallest planet and closest to the Sun. It moves very fast around the Sun!',
+                descZh: '水星是太陽系中最小的行星，也是距離太陽最近的行星。它繞太陽運行的速度非常快！',
+                funFactEn: 'Super hot by day (430°C) and freezing cold by night (-180°C) because it has no blanket of air!',
+                funFactZh: '白天超級熱（430°C），晚上超級冷（-180°C），因為它沒有大氣層保暖！',
+                soundFreq: 300
+            },
+            {
+                id: 'venus',
+                nameEn: 'Venus',
+                nameZh: '金星',
+                orderEn: '2nd Planet from Sun',
+                orderZh: '距離太陽第 2 顆行星',
+                typeEn: 'Terrestrial (Rocky)',
+                typeZh: '岩石行星',
+                color: '#E3BB76',
+                gradient: 'from-yellow-200 via-amber-400 to-yellow-600',
+                glowColor: 'rgba(227, 187, 118, 0.6)',
+                sizePx: 26,
+                orbitRadius: 160,
+                baseSpeed: 0.022,
+                emoji: '🟡',
+                moons: 0,
+                temp: '464°C',
+                sizeRatio: '0.95x',
+                descEn: 'Venus is the hottest planet in our solar system, covered with thick yellow clouds.',
+                descZh: '金星是太陽系中最熱的行星，表面被厚厚的黃色雲層包圍著。',
+                funFactEn: 'It spins backwards compared to most other planets, and shines super bright in the evening sky!',
+                funFactZh: '它的自轉方向和其他大多數行星相反，晚上在天空裡看非常明亮！',
+                soundFreq: 350
+            },
+            {
+                id: 'earth',
+                nameEn: 'Earth',
+                nameZh: '地球',
+                orderEn: '3rd Planet from Sun',
+                orderZh: '距離太陽第 3 顆行星',
+                typeEn: 'Terrestrial (Our Home!)',
+                typeZh: '岩石行星（我們的家園）',
+                color: '#4B9CD3',
+                gradient: 'from-blue-400 via-emerald-400 to-indigo-600',
+                glowColor: 'rgba(75, 156, 211, 0.6)',
+                sizePx: 28,
+                orbitRadius: 220,
+                baseSpeed: 0.015,
+                emoji: '🌍',
+                moons: 1,
+                temp: '15°C',
+                sizeRatio: '1.0x (Base)',
+                descEn: 'Earth is our wonderful home planet filled with oceans, land, fresh air, and life!',
+                descZh: '地球是我們美麗的家園，擁有汪洋大海、廣闊陸地、新鮮空氣和無數生命！',
+                funFactEn: 'It is the only planet we know that has liquid water and living creatures like animals and humans!',
+                funFactZh: '這是我們目前已知唯一擁有液態水和生命（動植物與人類）的星球！',
+                soundFreq: 400
+            },
+            {
+                id: 'mars',
+                nameEn: 'Mars',
+                nameZh: '火星',
+                orderEn: '4th Planet from Sun',
+                orderZh: '距離太陽第 4 顆行星',
+                typeEn: 'Terrestrial (Red Planet)',
+                typeZh: '岩石行星（紅色星球）',
+                color: '#E25822',
+                gradient: 'from-orange-400 via-red-500 to-amber-700',
+                glowColor: 'rgba(226, 88, 34, 0.6)',
+                sizePx: 22,
+                orbitRadius: 280,
+                baseSpeed: 0.011,
+                emoji: '🔴',
+                moons: 2,
+                temp: '-65°C',
+                sizeRatio: '0.53x',
+                descEn: 'Mars is known as the "Red Planet" because its dusty ground is full of reddish iron rust.',
+                descZh: '火星被称为「紅色星球」，因為它的土壤裡含有大量的氧化鐵（鐵銹），看起來紅紅的。',
+                funFactEn: 'Mars has the tallest volcano in the solar system, Olympus Mons, 3 times taller than Mt. Everest!',
+                funFactZh: '火星擁有太陽系最高的火山「奧林帕斯山」，高度幾乎是珠穆朗瑪峰的3倍高！',
+                soundFreq: 450
+            },
+            {
+                id: 'jupiter',
+                nameEn: 'Jupiter',
+                nameZh: '木星',
+                orderEn: '5th Planet from Sun',
+                orderZh: '距離太陽第 5 顆行星',
+                typeEn: 'Gas Giant',
+                typeZh: '氣體巨星',
+                color: '#D8CA9D',
+                gradient: 'from-amber-200 via-orange-300 to-stone-500',
+                glowColor: 'rgba(216, 202, 157, 0.6)',
+                sizePx: 52,
+                orbitRadius: 360,
+                baseSpeed: 0.007,
+                emoji: '🟠',
+                moons: 95,
+                temp: '-110°C',
+                sizeRatio: '11.2x',
+                descEn: 'Jupiter is the BIGGEST planet in the entire Solar System! All other planets could fit inside it.',
+                descZh: '木星是整個太陽系中「最大」的行星！太陽系其他所有行星加起來都能塞進木星裡。',
+                funFactEn: 'It has a famous Great Red Spot which is actually a giant storm bigger than the whole Earth!',
+                funFactZh: '木星上有一個著名的「大紅斑」，其實是一個比整個地球還要巨大的超級風暴！',
+                soundFreq: 500
+            },
+            {
+                id: 'saturn',
+                nameEn: 'Saturn',
+                nameZh: '土星',
+                orderEn: '6th Planet from Sun',
+                orderZh: '距離太陽第 6 顆行星',
+                typeEn: 'Gas Giant (Ringed)',
+                typeZh: '氣體巨星（擁有美麗光環）',
+                color: '#F0E68C',
+                gradient: 'from-yellow-100 via-amber-200 to-yellow-600',
+                glowColor: 'rgba(240, 230, 140, 0.6)',
+                sizePx: 44,
+                hasRings: true,
+                orbitRadius: 440,
+                baseSpeed: 0.005,
+                emoji: '🪐',
+                moons: 146,
+                temp: '-140°C',
+                sizeRatio: '9.4x',
+                descEn: 'Saturn is famous for its huge, gorgeous rings made of icy chunks, rocks, and dust particles.',
+                descZh: '土星以其巨大的美麗光環而聞名，光環是由無數冰塊、岩石和塵埃組成的。',
+                funFactEn: 'Saturn is so light because it is made mostly of gas. If you had a bath big enough, Saturn would float!',
+                funFactZh: '土星非常輕，主要由氣體組成。如果有個足夠大的浴缸，土星竟然可以漂浮在水面上！',
+                soundFreq: 550
+            },
+            {
+                id: 'uranus',
+                nameEn: 'Uranus',
+                nameZh: '天王星',
+                orderEn: '7th Planet from Sun',
+                orderZh: '距離太陽第 7 顆行星',
+                typeEn: 'Ice Giant',
+                typeZh: '冰巨星',
+                color: '#7FFFD4',
+                gradient: 'from-cyan-200 via-teal-300 to-blue-500',
+                glowColor: 'rgba(127, 255, 212, 0.6)',
+                sizePx: 36,
+                orbitRadius: 510,
+                baseSpeed: 0.0035,
+                emoji: '🩵',
+                moons: 28,
+                temp: '-195°C',
+                sizeRatio: '4.0x',
+                descEn: 'Uranus is a freezing cold Ice Giant with a lovely cyan-blue color caused by methane gas.',
+                descZh: '天王星是一顆極度寒冷的冰巨星，大氣中的甲烷使它呈現出美麗的藍綠色。',
+                funFactEn: 'Uranus rotates almost completely on its side, rolling like a bowling ball as it orbits the Sun!',
+                funFactZh: '天王星幾乎是「躺著」自轉的，就像一顆在軌道上滾動的保齡球一樣！',
+                soundFreq: 600
+            },
+            {
+                id: 'neptune',
+                nameEn: 'Neptune',
+                nameZh: '海王星',
+                orderEn: '8th Planet from Sun',
+                orderZh: '距離太陽第 8 顆行星',
+                typeEn: 'Ice Giant',
+                typeZh: '冰巨星',
+                color: '#4169E1',
+                gradient: 'from-blue-400 via-indigo-500 to-blue-800',
+                glowColor: 'rgba(65, 105, 225, 0.6)',
+                sizePx: 34,
+                orbitRadius: 580,
+                baseSpeed: 0.0025,
+                emoji: '🔵',
+                moons: 16,
+                temp: '-200°C',
+                sizeRatio: '3.9x',
+                descEn: 'Neptune is the farthest major planet from the Sun. It is dark, icy, and super windy!',
+                descZh: '海王星是距離太陽最遠的大行星。那裡既黑暗又冰冷，而且颳著全太陽系最強烈的狂風！',
+                funFactEn: 'Winds on Neptune can blow faster than a supersonic fighter jet—over 2,000 km per hour!',
+                funFactZh: '海王星上的風速超過每小時2000公里，比超音速戰鬥機還要快！',
+                soundFreq: 650
+            }
+        ];
+
+        /* Quiz Questions Bank */
+        const QUIZ_QUESTIONS = [
+            {
+                questionEn: "Which planet is the BIGGEST in our Solar System?",
+                questionZh: "請問太陽系中「最大」的行星是哪一顆？",
+                options: ["Earth / 地球", "Jupiter / 木星", "Mars / 火星", "Saturn / 土星"],
+                correctIndex: 1
+            },
+            {
+                questionEn: "Which planet is famous for its beautiful shiny rings made of ice & dust?",
+                questionZh: "哪顆行星以其由冰塊和塵埃組成的美麗光環而聞名？",
+                options: ["Mercury / 水星", "Venus / 金星", "Saturn / 土星", "Neptune / 海王星"],
+                correctIndex: 2
+            },
+            {
+                questionEn: "Which planet is known as our home planet with liquid water and life?",
+                questionZh: "哪顆行星是我們擁有液態水和生命的美麗家園？",
+                options: ["Earth / 地球", "Mars / 火星", "Uranus / 天王星", "Venus / 金星"],
+                correctIndex: 0
+            },
+            {
+                questionEn: "Which planet is closest to the Sun?",
+                questionZh: "距離太陽最近的行星是哪一顆？",
+                options: ["Venus / 金星", "Mars / 火星", "Mercury / 水星", "Neptune / 海王星"],
+                correctIndex: 2
+            },
+            {
+                questionEn: "Which planet is called the 'Red Planet' because of rusty iron dust?",
+                questionZh: "哪顆行星因為土壤富含氧化鐵錆而被称为「紅色星球」？",
+                options: ["Jupiter / 木星", "Mars / 火星", "Mercury / 水星", "Uranus / 天王星"],
+                correctIndex: 1
+            }
+        ];
+
+        // Interactive View State
+        let currentScale = 1.0;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startDragX = 0;
+        let startDragY = 0;
+
+        // Animation Loop State
+        let isPlaying = true;
+        let globalSpeedMultiplier = 1.0;
+        let planetAngles = PLANETS_DATA.map(() => Math.random() * Math.PI * 2);
+
+        // Sound Synthesis via Web Audio API
+        let audioCtx = null;
+
+        // Quiz State
+        let currentQuizIndex = 0;
+        let quizScore = 0;
+
+        /* DOM Element References */
+        const viewportContainer = document.getElementById('viewportContainer');
+        const solarSystemWorld = document.getElementById('solarSystemWorld');
+        const planetsContainer = document.getElementById('planetsContainer');
+        const orbitCanvas = document.getElementById('orbitCanvas');
+        const starsCanvas = document.getElementById('starsCanvas');
+        const zoomLevelText = document.getElementById('zoomLevelText');
+        const planetQuickNav = document.getElementById('planetQuickNav');
+
+        // Modal DOM
+        const planetModal = document.getElementById('planetModal');
+        const modalCard = document.getElementById('modalCard');
+
+        // Setup Background Stars Canvas
+        function initStarsCanvas() {
+            const ctx = starsCanvas.getContext('2d');
+            starsCanvas.width = window.innerWidth;
+            starsCanvas.height = window.innerHeight;
+
+            ctx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
+            const numStars = 250;
+
+            for (let i = 0; i < numStars; i++) {
+                const x = Math.random() * starsCanvas.width;
+                const y = Math.random() * starsCanvas.height;
+                const radius = Math.random() * 1.5;
+                const opacity = Math.random() * 0.8 + 0.2;
+
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                ctx.fill();
+            }
+        }
+
+        // Draw Orbits on Canvas
+        function drawOrbits() {
+            const maxRadius = PLANETS_DATA[PLANETS_DATA.length - 1].orbitRadius + 50;
+            const size = maxRadius * 2 + 100;
+            
+            orbitCanvas.width = size;
+            orbitCanvas.height = size;
+            orbitCanvas.style.width = `${size}px`;
+            orbitCanvas.style.height = `${size}px`;
+            
+            const ctx = orbitCanvas.getContext('2d');
+            const center = size / 2;
+
+            ctx.clearRect(0, 0, size, size);
+
+            PLANETS_DATA.forEach(planet => {
+                ctx.beginPath();
+                ctx.arc(center, center, planet.orbitRadius, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 6]);
+                ctx.stroke();
+            });
+        }
+
+        // Instantiate Planet Elements into the DOM
+        function createPlanetElements() {
+            planetsContainer.innerHTML = '';
+            
+            PLANETS_DATA.forEach((planet, index) => {
+                const pEl = document.createElement('div');
+                pEl.id = `planet-${planet.id}`;
+                pEl.className = 'absolute pointer-events-auto cursor-pointer flex flex-col items-center group transition-transform hover:scale-125';
+                pEl.style.zIndex = '20';
+
+                // Planet Visual Circle
+                let ringHTML = '';
+                if (planet.hasRings) {
+                    ringHTML = `
+                        <div class="absolute w-[220%] h-[60%] border-4 border-amber-200/60 rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-25deg] pointer-events-none shadow-lg"></div>
+                    `;
+                }
+
+                pEl.innerHTML = `
+                    <div class="relative flex items-center justify-center">
+                        ${ringHTML}
+                        <div class="rounded-full bg-gradient-to-tr ${planet.gradient} shadow-lg flex items-center justify-center"
+                             style="width: ${planet.sizePx}px; height: ${planet.sizePx}px; box-shadow: 0 0 12px ${planet.glowColor};">
+                        </div>
+                    </div>
+                    <div class="mt-1.5 px-2 py-0.5 bg-slate-900/90 border border-slate-700/80 rounded-full text-[11px] font-bold text-white tracking-wide shadow backdrop-blur group-hover:border-yellow-400 group-hover:text-yellow-300 transition whitespace-nowrap">
+                        ${planet.nameEn} ${planet.nameZh}
+                    </div>
+                `;
+
+                // Click listener to open modal
+                pEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openPlanetModal(planet);
+                    playSynthesizedSound(planet.soundFreq);
+                });
+
+                planetsContainer.appendChild(pEl);
+
+                // Add to quick navigation bar
+                const navBtn = document.createElement('button');
+                navBtn.className = 'px-2.5 py-1 bg-slate-800 hover:bg-indigo-600 border border-slate-700 rounded-xl text-xs font-bold text-slate-200 hover:text-white transition whitespace-nowrap flex items-center gap-1';
+                navBtn.innerHTML = `<span>${planet.emoji}</span> <span>${planet.nameZh}</span>`;
+                navBtn.addEventListener('click', () => {
+                    openPlanetModal(planet);
+                    playSynthesizedSound(planet.soundFreq);
+                });
+                planetQuickNav.appendChild(navBtn);
+            });
+        }
+
+        // Animation Loop
+        function animate() {
+            if (isPlaying) {
+                PLANETS_DATA.forEach((planet, index) => {
+                    planetAngles[index] += planet.baseSpeed * globalSpeedMultiplier;
+                    
+                    const angle = planetAngles[index];
+                    const x = Math.cos(angle) * planet.orbitRadius;
+                    const y = Math.sin(angle) * planet.orbitRadius;
+
+                    const el = document.getElementById(`planet-${planet.id}`);
+                    if (el) {
+                        el.style.transform = `translate(${x}px, ${y}px)`;
+                    }
+                });
+            }
+            requestAnimationFrame(animate);
+        }
+
+        // Apply View Transform (Zoom & Pan)
+        function updateTransform() {
+            solarSystemWorld.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
+            zoomLevelText.textContent = `${Math.round(currentScale * 100)}%`;
+        }
+
+        // Zoom Logic
+        function zoom(delta) {
+            const newScale = Math.min(Math.max(0.4, currentScale + delta), 2.5);
+            currentScale = parseFloat(newScale.toFixed(2));
+            updateTransform();
+        }
+
+        // Mouse & Touch Pan Handling
+        viewportContainer.addEventListener('mousedown', (e) => {
+            if (e.target.closest('#sunElement') || e.target.closest('[id^="planet-"]')) return;
+            isDragging = true;
+            startDragX = e.clientX - panX;
+            startDragY = e.clientY - panY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            panX = e.clientX - startDragX;
+            panY = e.clientY - startDragY;
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Wheel Zoom
+        viewportContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                zoom(0.1);
+            } else {
+                zoom(-0.1);
+            }
+        }, { passive: false });
+
+        // Touch gesture for mobile pan
+        viewportContainer.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                startDragX = e.touches[0].clientX - panX;
+                startDragY = e.touches[0].clientY - panY;
+            }
+        });
+
+        viewportContainer.addEventListener('touchmove', (e) => {
+            if (isDragging && e.touches.length === 1) {
+                panX = e.touches[0].clientX - startDragX;
+                panY = e.touches[0].clientY - startDragY;
+                updateTransform();
+            }
+        });
+
+        viewportContainer.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        // Control Buttons
+        document.getElementById('zoomInBtn').addEventListener('click', () => zoom(0.2));
+        document.getElementById('zoomOutBtn').addEventListener('click', () => zoom(-0.2));
+        document.getElementById('resetViewBtn').addEventListener('click', () => {
+            currentScale = 1.0;
+            panX = 0;
+            panY = 0;
+            updateTransform();
+        });
+
+        // Play/Pause Orbit Animation
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const playPauseTxt = document.getElementById('playPauseTxt');
+        playPauseBtn.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playPauseBtn.className = 'bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1.5 transition shadow';
+                playPauseBtn.innerHTML = `<i class="fas fa-pause"></i> <span>Pause / 暫停</span>`;
+            } else {
+                playPauseBtn.className = 'bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-sm font-bold flex items-center gap-1.5 transition shadow';
+                playPauseBtn.innerHTML = `<i class="fas fa-play"></i> <span>Play / 播放</span>`;
+            }
+        });
+
+        // Speed Control
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            globalSpeedMultiplier = parseFloat(e.target.value);
+        });
+
+        // Sun click event
+        document.getElementById('sunElement').addEventListener('click', () => {
+            openPlanetModal({
+                nameEn: 'The Sun',
+                nameZh: '太陽',
+                orderEn: 'Center of Solar System',
+                orderZh: '太陽系的中心',
+                typeEn: 'Yellow Dwarf Star',
+                typeZh: '黃矮星（恆星）',
+                gradient: 'from-amber-300 via-orange-400 to-red-500',
+                emoji: '☀️',
+                moons: 0,
+                temp: '5,500°C',
+                sizeRatio: '109x Earth',
+                descEn: 'The Sun is a huge, glowing ball of hot gas at the very center of our solar system!',
+                descZh: '太陽是位於我們太陽系正中心的一個巨大的、發光發熱的氣體球體！',
+                funFactEn: 'The Sun holds 99.8% of all the mass in the entire solar system. Its gravity keeps all planets in orbit!',
+                funFactZh: '太陽佔據了整個太陽系99.8%的質量！它強大的引力吸引著所有行星繞著它轉！',
+                soundFreq: 200
+            });
+            playSynthesizedSound(200);
+        });
+
+        // Open Detailed Planet Modal
+        function openPlanetModal(planet) {
+            document.getElementById('modalOrderBadge').textContent = `${planet.orderEn} • ${planet.orderZh}`;
+            document.getElementById('modalEnglishName').textContent = planet.nameEn;
+            document.getElementById('modalChineseName').textContent = planet.nameZh;
+            document.getElementById('modalTypeBadge').textContent = `${planet.typeEn} • ${planet.typeZh}`;
+            
+            document.getElementById('modalDescEn').textContent = planet.descEn;
+            document.getElementById('modalDescZh').textContent = planet.descZh;
+            
+            document.getElementById('modalFunFactEn').textContent = planet.funFactEn;
+            document.getElementById('modalFunFactZh').textContent = planet.funFactZh;
+
+            document.getElementById('modalMoons').textContent = planet.moons;
+            document.getElementById('modalTemp').textContent = planet.temp;
+            document.getElementById('modalSize').textContent = planet.sizeRatio;
+
+            const iconBox = document.getElementById('modalPlanetIcon');
+            iconBox.className = `w-28 h-28 sm:w-36 sm:h-36 rounded-full flex items-center justify-center text-6xl sm:text-7xl shadow-2xl relative border-4 border-white/20 shrink-0 bounce-hover bg-gradient-to-tr ${planet.gradient}`;
+            iconBox.textContent = planet.emoji;
+
+            // Audio button bind
+            document.getElementById('listenFactBtn').onclick = () => {
+                playSynthesizedSound(planet.soundFreq || 400);
+            };
+
+            planetModal.classList.remove('hidden');
+            setTimeout(() => {
+                planetModal.classList.remove('opacity-0');
+                modalCard.classList.remove('scale-95');
+                modalCard.classList.add('scale-100');
+            }, 10);
+        }
+
+        // Close Modal
+        function closeModal() {
+            planetModal.classList.add('opacity-0');
+            modalCard.classList.remove('scale-100');
+            modalCard.classList.add('scale-95');
+            setTimeout(() => {
+                planetModal.classList.add('hidden');
+            }, 300);
+        }
+
+        document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+        document.getElementById('modalGotItBtn').addEventListener('click', closeModal);
+        planetModal.addEventListener('click', (e) => {
+            if (e.target === planetModal) closeModal();
+        });
+
+        // Web Audio Synth for Kid-friendly sound feedback
+        function playSynthesizedSound(freq = 440) {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(freq * 1.5, audioCtx.currentTime + 0.15);
+
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } catch (err) {
+                console.log('Audio playback unavailable');
+            }
+        }
+
+        // Quiz System Logic
+        const quizModal = document.getElementById('quizModal');
+        const quizTabBtn = document.getElementById('quizTabBtn');
+        const closeQuizBtn = document.getElementById('closeQuizBtn');
+        const quizQuestionEn = document.getElementById('quizQuestionEn');
+        const quizQuestionZh = document.getElementById('quizQuestionZh');
+        const quizOptionsGrid = document.getElementById('quizOptionsGrid');
+        const quizFeedback = document.getElementById('quizFeedback');
+        const quizScoreEl = document.getElementById('quizScore');
+        const quizProgressEl = document.getElementById('quizProgress');
+
+        quizTabBtn.addEventListener('click', () => {
+            currentQuizIndex = 0;
+            quizScore = 0;
+            quizScoreEl.textContent = '0';
+            loadQuizQuestion();
+            quizModal.classList.remove('hidden');
+        });
+
+        closeQuizBtn.addEventListener('click', () => {
+            quizModal.classList.add('hidden');
+        });
+
+        function loadQuizQuestion() {
+            quizFeedback.className = 'hidden text-center p-3 rounded-xl font-bold text-sm mb-2';
+            const q = QUIZ_QUESTIONS[currentQuizIndex];
+            quizProgressEl.textContent = `${currentQuizIndex + 1}/${QUIZ_QUESTIONS.length}`;
+            quizQuestionEn.textContent = q.questionEn;
+            quizQuestionZh.textContent = q.questionZh;
+
+            quizOptionsGrid.innerHTML = '';
+            q.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'bg-slate-800 hover:bg-indigo-600 border border-slate-700 text-slate-100 font-bold p-3 rounded-xl text-sm transition transform active:scale-95 text-center';
+                btn.textContent = optText;
+                btn.addEventListener('click', () => checkAnswer(idx));
+                quizOptionsGrid.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selectedIndex) {
+            const q = QUIZ_QUESTIONS[currentQuizIndex];
+            const isCorrect = selectedIndex === q.correctIndex;
+
+            if (isCorrect) {
+                quizScore += 20;
+                quizScoreEl.textContent = quizScore;
+                quizFeedback.textContent = '🎉 Bingo! Correct! / 答對了！真棒！';
+                quizFeedback.className = 'text-center p-3 rounded-xl font-bold text-sm mb-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 block';
+                playSynthesizedSound(600);
+            } else {
+                quizFeedback.textContent = '❌ Oops! Try again next time! / 差一點點，再接再厲！';
+                quizFeedback.className = 'text-center p-3 rounded-xl font-bold text-sm mb-2 bg-rose-500/20 text-rose-300 border border-rose-500/40 block';
+                playSynthesizedSound(200);
+            }
+
+            // Lock options temporarily
+            Array.from(quizOptionsGrid.children).forEach(btn => btn.disabled = true);
+
+            setTimeout(() => {
+                currentQuizIndex++;
+                if (currentQuizIndex < QUIZ_QUESTIONS.length) {
+                    loadQuizQuestion();
+                } else {
+                    // Quiz End
+                    quizQuestionEn.textContent = `Great Job! Final Score: ${quizScore}/100`;
+                    quizQuestionZh.textContent = `太厲害了！最終得分：${quizScore}/100`;
+                    quizOptionsGrid.innerHTML = `
+                        <button onclick="resetQuiz()" class="col-span-2 bg-gradient-to-r from-yellow-400 to-amber-500 text-slate-900 font-black p-3 rounded-xl hover:from-yellow-500 hover:to-amber-600 transition">
+                            Play Again / 再玩一次 🔄
+                        </button>
+                    `;
+                }
+            }, 1500);
+        }
+
+        window.resetQuiz = function() {
+            currentQuizIndex = 0;
+            quizScore = 0;
+            quizScoreEl.textContent = '0';
+            loadQuizQuestion();
+        };
+
+        // Responsive canvas setup
+        window.addEventListener('resize', () => {
+            initStarsCanvas();
+            drawOrbits();
+        });
+
+        // Initialize on Load
+        window.onload = function() {
+            initStarsCanvas();
+            drawOrbits();
+            createPlanetElements();
+            updateTransform();
+            animate();
+        };
+    </script>
+</body>
+</html>
